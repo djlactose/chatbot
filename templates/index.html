@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Bot</title>
+    <style>
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #output {
+            white-space: pre-wrap;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Chat Bot</h1>
+    <form id="command-form">
+        <label for="command">Ask a question:</label>
+        <br>
+        <textarea id="command" name="command" rows="4" cols="50"></textarea>
+        <button type="button" id="start-speech">Start Speech</button>
+        <br>
+        <button type="submit">Run</button>
+        <div class="loader" id="loader" style="display:none;"></div>
+    </form>
+    <h2>Output:</h2>
+    <pre id="output"></pre>
+    <script>
+        // Run command
+        $(document).ready(function() {
+            $("#command-form").submit(function(event) {
+                event.preventDefault();
+                var command = $("#command").val();
+                $("#loader").show();
+                $.post('/run_command', {command: command}, function(data) {
+                    $("#output").text(data.output);
+                    $("#loader").hide();
+                });
+            });
+        });
+    
+        // Speech Recognition
+        if ('webkitSpeechRecognition' in window) {
+            const recognition = new webkitSpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+    
+            recognition.onresult = function(event) {
+                let interimTranscript = '';
+                let finalTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+                $('#command').val(finalTranscript + interimTranscript);
+    
+                if (!recognition.continuous) {
+                    $("#command-form").submit();
+                }
+            };
+    
+            recognition.onstart = function() {
+                $('#start-speech').text('Listening...');
+            };
+    
+            let isListening = false;
+            $('#start-speech').click(function() {
+                if (isListening) {
+                    recognition.continuous = false;
+                    recognition.stop();
+                } else {
+                    recognition.continuous = true;
+                    recognition.start();
+                }
+                isListening = !isListening;
+            });
+        } else {
+            $('#start-speech').prop('disabled', true);
+            console.log('Speech recognition not supported in this browser.');
+        }
+    </script>    
+</body>
+</html>
